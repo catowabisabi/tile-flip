@@ -20,9 +20,8 @@ class InfiniteScreen extends StatefulWidget {
 }
 
 class _InfiniteScreenState extends State<InfiniteScreen> {
-  late Puzzle _puzzle;
-  late int _currentSize;
-  late int _currentShuffleTaps;
+  Puzzle? _puzzle;
+  int _currentSize = 4;
   final List<Puzzle> _history = [];
   bool _won = false;
   ProgressStore? _store;
@@ -38,7 +37,6 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
         _loadNext();
       });
     });
-    _loadNext();
   }
 
   ({int size, int taps}) _difficultyForStreak(int streak) {
@@ -52,7 +50,6 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
     final streak = _store?.infiniteStreak ?? 0;
     final diff = _difficultyForStreak(streak);
     _currentSize = diff.size;
-    _currentShuffleTaps = diff.taps;
     _puzzle = Puzzle.generate(
       size: diff.size,
       shuffleTaps: diff.taps,
@@ -64,11 +61,14 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
 
   void _onTap(int row, int col) {
     if (_won) return;
+    final current = _puzzle;
+    if (current == null) return;
+    final next = current.tap(row, col);
     setState(() {
-      _history.add(_puzzle);
-      _puzzle = _puzzle.tap(row, col);
+      _history.add(current);
+      _puzzle = next;
     });
-    if (_puzzle.isSolved) {
+    if (next.isSolved) {
       _handleWin();
     }
   }
@@ -88,7 +88,7 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
       context: context,
       barrierDismissible: false,
       builder: (_) => _InfiniteWinDialog(
-        moves: _puzzle.moves,
+        moves: _puzzle?.moves ?? 0,
         streak: store.infiniteStreak,
         bestStreak: store.infiniteBestStreak,
         onNext: () {
@@ -103,16 +103,13 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
     );
   }
 
-  void _restart() {
-    setState(() {
-      _puzzle = Puzzle.generate(
-        size: _currentSize,
-        shuffleTaps: _currentShuffleTaps,
-        seed: _rng.nextInt(1 << 31),
-      );
-      _history.clear();
-      _won = false;
-    });
+  /// Skip the current puzzle. Giving up breaks the streak — resets to 0 and
+  /// re-picks difficulty accordingly so the player doesn't stay stuck on a
+  /// board they can't solve.
+  Future<void> _skip() async {
+    await _store?.resetInfiniteStreak();
+    if (!mounted) return;
+    setState(_loadNext);
   }
 
   void _undo() {
@@ -126,6 +123,7 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
   Widget build(BuildContext context) {
     final streak = _store?.infiniteStreak ?? 0;
     final best = _store?.infiniteBestStreak ?? 0;
+    final puzzle = _puzzle;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Infinite'),
@@ -136,8 +134,8 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
             icon: const Icon(Icons.undo_rounded),
           ),
           IconButton(
-            tooltip: 'New puzzle',
-            onPressed: _restart,
+            tooltip: 'Skip (resets streak)',
+            onPressed: puzzle == null ? null : _skip,
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
@@ -147,22 +145,24 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
         child: Column(
           children: [
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-                child: Column(
-                  children: [
-                    _InfiniteStatsBar(
-                      streak: streak,
-                      best: best,
-                      moves: _puzzle.moves,
-                      size: _currentSize,
+              child: puzzle == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+                      child: Column(
+                        children: [
+                          _InfiniteStatsBar(
+                            streak: streak,
+                            best: best,
+                            moves: puzzle.moves,
+                            size: _currentSize,
+                          ),
+                          const Spacer(),
+                          PuzzleGrid(puzzle: puzzle, onTap: _onTap),
+                          const Spacer(),
+                        ],
+                      ),
                     ),
-                    const Spacer(),
-                    PuzzleGrid(puzzle: _puzzle, onTap: _onTap),
-                    const Spacer(),
-                  ],
-                ),
-              ),
             ),
             const BannerAdSlot(),
           ],
