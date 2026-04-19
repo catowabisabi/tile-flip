@@ -48,4 +48,26 @@ class ProgressStore {
     await _prefs.setInt(_kWinCount, n);
     return n;
   }
+
+  // --- Infinite mode stats ---
+  static const _kInfiniteStreak = 'infinite_streak';
+  static const _kInfiniteBestStreak = 'infinite_best_streak';
+  static const _kInfiniteTotalWins = 'infinite_total_wins';
+
+  int get infiniteStreak => _prefs.getInt(_kInfiniteStreak) ?? 0;
+  int get infiniteBestStreak => _prefs.getInt(_kInfiniteBestStreak) ?? 0;
+  int get infiniteTotalWins => _prefs.getInt(_kInfiniteTotalWins) ?? 0;
+
+  Future<void> recordInfiniteWin() async {
+    final nextStreak = infiniteStreak + 1;
+    await _prefs.setInt(_kInfiniteStreak, nextStreak);
+    if (nextStreak > infiniteBestStreak) {
+      await _prefs.setInt(_kInfiniteBestStreak, nextStreak);
+    }
+    await _prefs.setInt(_kInfiniteTotalWins, infiniteTotalWins + 1);
+  }
+
+  Future<void> resetInfiniteStreak() async {
+    await _prefs.setInt(_kInfiniteStreak, 0);
+  }
 }

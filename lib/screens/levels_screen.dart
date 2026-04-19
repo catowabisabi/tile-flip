@@ -49,14 +49,14 @@ class _LevelsScreenState extends State<LevelsScreen> {
                       padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            mainAxisSpacing: 14,
-                            crossAxisSpacing: 14,
+                            crossAxisCount: 4,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
                             childAspectRatio: 1,
                           ),
-                      itemCount: LevelCatalog.levels.length,
+                      itemCount: LevelCatalog.totalLevels,
                       itemBuilder: (context, i) {
-                        final level = LevelCatalog.levels[i];
+                        final level = LevelCatalog.at(i + 1);
                         final unlocked = level.index <= store.highestUnlocked;
                         final stars = store.starsFor(level.index);
                         return _LevelCard(

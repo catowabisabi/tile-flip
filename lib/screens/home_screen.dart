@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 import '../widgets/banner_ad_slot.dart';
+import 'infinite_screen.dart';
 import 'levels_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -42,7 +43,21 @@ class HomeScreen extends StatelessWidget {
                             ),
                           );
                         },
-                        child: const Text('PLAY'),
+                        child: const Text('LEVELS'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const InfiniteScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text('INFINITE'),
                       ),
                     ),
                     const SizedBox(height: 12),
