@@ -47,6 +47,11 @@ android/gradlew.bat
 android/local.properties
 android/**/GeneratedPluginRegistrant.java
 
+# Release signing — NEVER commit real keystores or passwords.
+android/key.properties
+android/**/*.jks
+android/**/*.keystore
+
 # iOS / Xcode
 ios/**/*.mode1v3
 ios/**/*.mode2v3

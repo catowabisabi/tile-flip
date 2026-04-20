@@ -1,0 +1,26 @@
+# app-ads.txt — host this at the ROOT of your developer website:
+#   https://{{ your-domain }}/app-ads.txt
+#
+# AdMob generates the exact line(s) for you. Path:
+#   AdMob → Apps → <your app> → "app-ads.txt" tab → "Click to copy".
+#
+# The line looks like this (DO NOT use these placeholder values — copy yours from AdMob):
+#
+#   google.com, pub-REPLACE_ME_ADMOB_PUB_ID, DIRECT, f08c47fec0942fa0
+#
+# Replace `pub-REPLACE_ME_ADMOB_PUB_ID` with your actual Publisher ID (starts with `pub-`).
+# Keep the trailing hash exactly as AdMob provides.
+#
+# If you later add mediation networks (Unity Ads, AppLovin, Meta Audience, etc),
+# each one gives you a separate line to append. Example:
+#
+#   google.com,     pub-1234567890123456, DIRECT,   f08c47fec0942fa0
+#   applovin.com,   a1b2c3d4e5f6g7h8i9,   DIRECT
+#   unity.com,      1234567,               RESELLER, 1234567890abcdef
+#
+# Verification: AdMob → Apps → app-ads.txt tab will show a green tick within 24h-7 days
+# once the file is reachable. If it stays red:
+#  - Check the Developer Website URL in Play Console → Store listing matches exactly.
+#  - Make sure `/app-ads.txt` returns HTTP 200 with `Content-Type: text/plain` (common gotcha:
+#    GitHub Pages by default, Cloudflare Pages, Netlify all work; Squarespace blocks it).
+#  - No redirect. The URL must respond directly.
