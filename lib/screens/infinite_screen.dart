@@ -3,11 +3,13 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../models/infinite_difficulty.dart';
 import '../models/puzzle.dart';
 import '../services/ads.dart';
 import '../services/storage.dart';
 import '../theme.dart';
 import '../widgets/banner_ad_slot.dart';
+import '../widgets/glass.dart';
 import '../widgets/puzzle_grid.dart';
 
 /// Endless mode: solve one puzzle, get another. Difficulty scales with the
@@ -39,16 +41,9 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
     });
   }
 
-  ({int size, int taps}) _difficultyForStreak(int streak) {
-    if (streak < 10) return (size: 4, taps: 2 + (streak ~/ 3));
-    if (streak < 30) return (size: 5, taps: 5 + ((streak - 10) ~/ 4));
-    if (streak < 100) return (size: 6, taps: 8 + ((streak - 30) ~/ 7));
-    return (size: 7, taps: (12 + ((streak - 100) ~/ 10)).clamp(12, 25));
-  }
-
   void _loadNext() {
     final streak = _store?.infiniteStreak ?? 0;
-    final diff = _difficultyForStreak(streak);
+    final diff = InfiniteDifficulty.forStreak(streak);
     _currentSize = diff.size;
     _puzzle = Puzzle.generate(
       size: diff.size,
@@ -87,6 +82,7 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.55),
       builder: (_) => _InfiniteWinDialog(
         moves: _puzzle?.moves ?? 0,
         streak: store.infiniteStreak,
@@ -125,6 +121,7 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
     final best = _store?.infiniteBestStreak ?? 0;
     final puzzle = _puzzle;
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Infinite'),
         actions: [
@@ -140,32 +137,33 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            Expanded(
-              child: puzzle == null
-                  ? const Center(child: CircularProgressIndicator())
-                  : Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-                      child: Column(
-                        children: [
-                          _InfiniteStatsBar(
-                            streak: streak,
-                            best: best,
-                            moves: puzzle.moves,
-                            size: _currentSize,
-                          ),
-                          const Spacer(),
-                          PuzzleGrid(puzzle: puzzle, onTap: _onTap),
-                          const Spacer(),
-                        ],
+      body: AppBackdrop(
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: puzzle == null
+                    ? const Center(child: CircularProgressIndicator())
+                    : Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                        child: Column(
+                          children: [
+                            _InfiniteStatsBar(
+                              streak: streak,
+                              best: best,
+                              moves: puzzle.moves,
+                              size: _currentSize,
+                            ),
+                            const Spacer(),
+                            PuzzleGrid(puzzle: puzzle, onTap: _onTap),
+                            const Spacer(),
+                          ],
+                        ),
                       ),
-                    ),
-            ),
-            const BannerAdSlot(),
-          ],
+              ),
+              const BannerAdSlot(),
+            ],
+          ),
         ),
       ),
     );
@@ -186,22 +184,31 @@ class _InfiniteStatsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _Stat(label: 'GRID', value: '$size×$size'),
-        _Stat(label: 'MOVES', value: '$moves'),
-        _Stat(label: 'STREAK', value: '$streak'),
-        _Stat(label: 'BEST', value: '$best'),
-      ],
+    return GlassCard(
+      borderRadius: 22,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _Stat(label: 'GRID', value: '$size×$size'),
+          _Stat(label: 'MOVES', value: '$moves'),
+          _Stat(label: 'STREAK', value: '$streak', highlight: true),
+          _Stat(label: 'BEST', value: '$best'),
+        ],
+      ),
     );
   }
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
+  const _Stat({
+    required this.label,
+    required this.value,
+    this.highlight = false,
+  });
   final String label;
   final String value;
+  final bool highlight;
 
   @override
   Widget build(BuildContext context) {
@@ -210,19 +217,19 @@ class _Stat extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
-            color: AppColors.inkSoft.withValues(alpha: 0.7),
+            letterSpacing: 1.3,
+            color: AppColors.inkSoft.withValues(alpha: 0.75),
           ),
         ),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w800,
-            color: AppColors.ink,
+            color: highlight ? AppColors.accent : AppColors.ink,
           ),
         ),
       ],
@@ -248,46 +255,65 @@ class _InfiniteWinDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final newBest = streak == bestStreak && streak > 0;
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'SOLVED',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2,
-              color: AppColors.inkSoft.withValues(alpha: 0.7),
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+      child: GlassCard(
+        borderRadius: 26,
+        fillAlpha: 0.14,
+        blurSigma: 28,
+        padding: const EdgeInsets.fromLTRB(28, 28, 28, 22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'SOLVED',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 3,
+                color: AppColors.inkSoft.withValues(alpha: 0.8),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Streak $streak',
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
+            const SizedBox(height: 10),
+            Text(
+              'Streak $streak',
+              style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                color: AppColors.ink,
+                letterSpacing: -0.5,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '$moves moves · best $bestStreak${newBest ? " (new!)" : ""}',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.inkSoft.withValues(alpha: 0.7),
+            const SizedBox(height: 6),
+            Text(
+              '$moves moves · best $bestStreak${newBest ? " (new!)" : ""}',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.inkSoft.withValues(alpha: 0.85),
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              OutlinedButton(onPressed: onQuit, child: const Text('Quit')),
-              FilledButton(onPressed: onNext, child: const Text('Next')),
-            ],
-          ),
-        ],
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onQuit,
+                    child: const Text('Quit'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: onNext,
+                    child: const Text('Next'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

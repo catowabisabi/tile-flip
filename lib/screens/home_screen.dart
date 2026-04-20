@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 import '../widgets/banner_ad_slot.dart';
+import '../widgets/glass.dart';
 import 'infinite_screen.dart';
 import 'levels_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -11,31 +13,49 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      body: AppBackdrop(
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    const Spacer(flex: 2),
-                    const _LogoMark(),
-                    const SizedBox(height: 28),
-                    Text(
-                      'Tile Flip',
-                      style: Theme.of(context).textTheme.displayLarge,
+                    _SettingsButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        );
+                      },
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Tap a tile.\nFlip its neighbours.\nMake the board one colour.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const Spacer(flex: 3),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Spacer(flex: 2),
+                      const _LogoMark(),
+                      const SizedBox(height: 28),
+                      Text(
+                        'Tile Flip',
+                        style: Theme.of(context).textTheme.displayLarge,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Tap a tile.\nFlip its neighbours.\nMake the board one colour.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const Spacer(flex: 3),
+                      _PrimaryCta(
+                        label: 'LEVELS',
+                        icon: Icons.grid_view_rounded,
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute<void>(
@@ -43,13 +63,11 @@ class HomeScreen extends StatelessWidget {
                             ),
                           );
                         },
-                        child: const Text('LEVELS'),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
+                      const SizedBox(height: 14),
+                      _GlassCta(
+                        label: 'INFINITE',
+                        icon: Icons.all_inclusive_rounded,
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute<void>(
@@ -57,18 +75,122 @@ class HomeScreen extends StatelessWidget {
                             ),
                           );
                         },
-                        child: const Text('INFINITE'),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    const _HowToHint(),
-                    const Spacer(flex: 2),
-                  ],
+                      const SizedBox(height: 14),
+                      const _HowToHint(),
+                      const Spacer(flex: 2),
+                    ],
+                  ),
                 ),
               ),
+              const BannerAdSlot(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PrimaryCta extends StatelessWidget {
+  const _PrimaryCta({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: AppGradients.accentButton,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.accent.withValues(alpha: 0.35),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
             ),
-            const BannerAdSlot(),
           ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: onPressed,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: AppColors.bg0, size: 20),
+                  const SizedBox(width: 10),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: AppColors.bg0,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassCta extends StatelessWidget {
+  const _GlassCta({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: GlassCard(
+        padding: EdgeInsets.zero,
+        borderRadius: 18,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: onPressed,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: AppColors.ink, size: 20),
+                  const SizedBox(width: 10),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: AppColors.ink,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -80,30 +202,71 @@ class _LogoMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 72,
-      height: 72,
+    return Container(
+      width: 76,
+      height: 76,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0x22FFFFFF), Color(0x0AFFFFFF)],
+        ),
+        border: Border.all(color: AppColors.glassBorder()),
+      ),
       child: GridView.count(
         crossAxisCount: 2,
-        mainAxisSpacing: 6,
-        crossAxisSpacing: 6,
+        mainAxisSpacing: 4,
+        crossAxisSpacing: 4,
         physics: const NeverScrollableScrollPhysics(),
         children: [
-          _logoSquare(AppColors.ink),
-          _logoSquare(AppColors.surface, border: true),
-          _logoSquare(AppColors.surface, border: true),
+          _logoSquare(AppColors.tileLight),
+          _logoSquare(AppColors.tileDark),
+          _logoSquare(AppColors.tileDark),
           _logoSquare(AppColors.accent),
         ],
       ),
     );
   }
 
-  Widget _logoSquare(Color color, {bool border = false}) {
+  Widget _logoSquare(Color color) {
     return Container(
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(8),
-        border: border ? Border.all(color: AppColors.ink, width: 1.4) : null,
+      ),
+    );
+  }
+}
+
+class _SettingsButton extends StatelessWidget {
+  const _SettingsButton({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Settings',
+      button: true,
+      child: GlassCard(
+        padding: EdgeInsets.zero,
+        borderRadius: 14,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onPressed,
+            child: const Padding(
+              padding: EdgeInsets.all(10),
+              child: Icon(
+                Icons.settings_rounded,
+                color: AppColors.ink,
+                size: 22,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

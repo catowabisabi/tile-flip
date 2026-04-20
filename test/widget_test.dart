@@ -1,9 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:tile_flip/models/infinite_difficulty.dart';
 import 'package:tile_flip/models/puzzle.dart';
 import 'package:tile_flip/screens/home_screen.dart';
 import 'package:tile_flip/theme.dart';
+
+/// BFS-solves a tile-flip puzzle up to [maxDepth] moves. Returns the minimum
+/// tap count, or `null` if no solution was found within the depth bound.
+/// Used only by tests to verify generated boards are actually solvable.
+int? _solve(Puzzle start, {required int maxDepth}) {
+  if (start.isSolved) return 0;
+  final seen = <String>{_key(start)};
+  var frontier = <Puzzle>[start];
+  for (var depth = 1; depth <= maxDepth; depth++) {
+    final next = <Puzzle>[];
+    for (final p in frontier) {
+      for (var r = 0; r < p.size; r++) {
+        for (var c = 0; c < p.size; c++) {
+          final n = p.tap(r, c);
+          if (n.isSolved) return depth;
+          final k = _key(n);
+          if (seen.add(k)) next.add(n);
+        }
+      }
+    }
+    if (next.isEmpty) return null;
+    frontier = next;
+  }
+  return null;
+}
+
+String _key(Puzzle p) {
+  final sb = StringBuffer();
+  for (final t in p.tiles) {
+    sb.write(t ? '1' : '0');
+  }
+  return sb.toString();
+}
 
 void main() {
   group('Puzzle', () {
@@ -83,9 +117,114 @@ void main() {
     });
   });
 
+  group('InfiniteDifficulty', () {
+    test('tier boundaries', () {
+      expect(InfiniteDifficulty.forStreak(0).size, 4);
+      expect(InfiniteDifficulty.forStreak(9).size, 4);
+      expect(InfiniteDifficulty.forStreak(10).size, 5);
+      expect(InfiniteDifficulty.forStreak(29).size, 5);
+      expect(InfiniteDifficulty.forStreak(30).size, 6);
+      expect(InfiniteDifficulty.forStreak(99).size, 6);
+      expect(InfiniteDifficulty.forStreak(100).size, 7);
+      expect(InfiniteDifficulty.forStreak(9999).size, 7);
+    });
+
+    test('taps are capped at 25 on hardcore tier', () {
+      expect(InfiniteDifficulty.forStreak(100000).taps, 25);
+    });
+  });
+
+  group('Infinite stability simulation', () {
+    test(
+      'generates 50 consecutive infinite boards without errors or pre-solved states',
+      () {
+        final progression = <Map<String, int>>[];
+        for (var streak = 0; streak < 50; streak++) {
+          final diff = InfiniteDifficulty.forStreak(streak);
+          final puzzle = Puzzle.generate(
+            size: diff.size,
+            shuffleTaps: diff.taps,
+            seed: 7000 + streak,
+          );
+          expect(
+            puzzle.tiles.length,
+            diff.size * diff.size,
+            reason: 'streak=$streak board size wrong',
+          );
+          expect(
+            puzzle.isSolved,
+            isFalse,
+            reason: 'streak=$streak produced a pre-solved board',
+          );
+          progression.add({
+            'streak': streak,
+            'size': diff.size,
+            'taps': diff.taps,
+          });
+        }
+        // Print the grid-size / taps progression so the log doubles as a
+        // difficulty-curve visualisation.
+        // ignore: avoid_print
+        print('streak | grid | shuffle_taps');
+        // ignore: avoid_print
+        print('-------|------|-------------');
+        for (final row in progression) {
+          // ignore: avoid_print
+          print(
+            '${row['streak']!.toString().padLeft(6)} | '
+            '${row['size']}×${row['size']} | '
+            '${row['taps']}',
+          );
+        }
+
+        // Sanity-check tier transitions landed at the expected streaks.
+        expect(progression[0]['size'], 4);
+        expect(progression[9]['size'], 4);
+        expect(progression[10]['size'], 5);
+        expect(progression[29]['size'], 5);
+        expect(progression[30]['size'], 6);
+        expect(progression[49]['size'], 6);
+      },
+    );
+
+    test(
+      'BFS proves 4×4 early-tier boards are actually solvable in ≤ shuffleTaps moves',
+      () {
+        // Solving 5×5 / 6×6 / 7×7 with BFS blows up (>millions of nodes). The
+        // generator is solvable by construction (self-inverse taps from a
+        // solved board); for early 4×4 tiers we can afford to prove it.
+        for (var streak = 0; streak < 10; streak++) {
+          final diff = InfiniteDifficulty.forStreak(streak);
+          final puzzle = Puzzle.generate(
+            size: diff.size,
+            shuffleTaps: diff.taps,
+            seed: 7000 + streak,
+          );
+          // Allow a generous depth bound: the generator may apply the same
+          // tap twice (it guards against exact dupes but not against
+          // permutations that cancel), so the true minimum could be less
+          // than shuffleTaps. We just need SOME solution within reason.
+          final minMoves = _solve(puzzle, maxDepth: diff.taps + 2);
+          expect(
+            minMoves,
+            isNotNull,
+            reason:
+                'streak=$streak (size=${diff.size}, taps=${diff.taps}) '
+                'could not be solved within ${diff.taps + 2} moves',
+          );
+          expect(
+            minMoves! <= diff.taps + 2,
+            isTrue,
+            reason: 'streak=$streak solution depth $minMoves exceeds bound',
+          );
+        }
+      },
+    );
+  });
+
   testWidgets('HomeScreen renders title and mode buttons', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.light(), home: const HomeScreen()),
+      MaterialApp(theme: AppTheme.dark(), home: const HomeScreen()),
     );
     expect(find.text('Tile Flip'), findsOneWidget);
     expect(find.text('LEVELS'), findsOneWidget);

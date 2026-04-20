@@ -7,6 +7,7 @@ import '../services/ads.dart';
 import '../services/storage.dart';
 import '../theme.dart';
 import '../widgets/banner_ad_slot.dart';
+import '../widgets/glass.dart';
 import '../widgets/puzzle_grid.dart';
 
 class GameScreen extends StatefulWidget {
@@ -56,7 +57,6 @@ class _GameScreenState extends State<GameScreen> {
     final winCount = await store.incrementWinCount();
 
     if (winCount % kInterstitialEveryNWins == 0) {
-      // Fire-and-forget — don't block the UI on ad load.
       unawaited(AdsService.instance.maybeShowInterstitial());
     }
 
@@ -64,6 +64,7 @@ class _GameScreenState extends State<GameScreen> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.55),
       builder: (_) => _WinDialog(
         stars: stars,
         moves: _puzzle.moves,
@@ -114,6 +115,7 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text('Level ${widget.level.index}'),
         actions: [
@@ -129,29 +131,30 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-                child: Column(
-                  children: [
-                    _StatsBar(
-                      moves: _puzzle.moves,
-                      par: widget.level.par,
-                      size: widget.level.size,
-                    ),
-                    const Spacer(),
-                    PuzzleGrid(puzzle: _puzzle, onTap: _onTap),
-                    const Spacer(),
-                  ],
+      body: AppBackdrop(
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                  child: Column(
+                    children: [
+                      _StatsBar(
+                        moves: _puzzle.moves,
+                        par: widget.level.par,
+                        size: widget.level.size,
+                      ),
+                      const Spacer(),
+                      PuzzleGrid(puzzle: _puzzle, onTap: _onTap),
+                      const Spacer(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const BannerAdSlot(),
-          ],
+              const BannerAdSlot(),
+            ],
+          ),
         ),
       ),
     );
@@ -166,21 +169,30 @@ class _StatsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _Stat(label: 'GRID', value: '$size×$size'),
-        _Stat(label: 'MOVES', value: '$moves'),
-        _Stat(label: 'PAR', value: '$par'),
-      ],
+    return GlassCard(
+      borderRadius: 22,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _Stat(label: 'GRID', value: '$size×$size'),
+          _Stat(label: 'MOVES', value: '$moves', highlight: true),
+          _Stat(label: 'PAR', value: '$par'),
+        ],
+      ),
     );
   }
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
+  const _Stat({
+    required this.label,
+    required this.value,
+    this.highlight = false,
+  });
   final String label;
   final String value;
+  final bool highlight;
 
   @override
   Widget build(BuildContext context) {
@@ -189,19 +201,19 @@ class _Stat extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
-            color: AppColors.inkSoft.withValues(alpha: 0.7),
+            letterSpacing: 1.3,
+            color: AppColors.inkSoft.withValues(alpha: 0.75),
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 20,
+          style: TextStyle(
+            fontSize: 22,
             fontWeight: FontWeight.w800,
-            color: AppColors.ink,
+            color: highlight ? AppColors.accent : AppColors.ink,
           ),
         ),
       ],
@@ -228,10 +240,14 @@ class _WinDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppColors.background,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+      child: GlassCard(
+        borderRadius: 26,
+        fillAlpha: 0.14,
+        blurSigma: 28,
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 22),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -244,27 +260,40 @@ class _WinDialog extends StatelessWidget {
                 color: AppColors.inkSoft.withValues(alpha: 0.8),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(3, (i) {
                 final filled = i < stars;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Icon(
                     filled ? Icons.star_rounded : Icons.star_outline_rounded,
-                    size: 42,
-                    color: filled ? AppColors.accent : AppColors.muted,
+                    size: 48,
+                    color: filled
+                        ? AppColors.accent
+                        : AppColors.muted.withValues(alpha: 0.7),
+                    shadows: filled
+                        ? [
+                            BoxShadow(
+                              color: AppColors.accent.withValues(alpha: 0.55),
+                              blurRadius: 14,
+                            ),
+                          ]
+                        : null,
                   ),
                 );
               }),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Text(
               '$moves moves · par $par',
-              style: const TextStyle(fontSize: 15, color: AppColors.inkSoft),
+              style: TextStyle(
+                fontSize: 15,
+                color: AppColors.inkSoft.withValues(alpha: 0.85),
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
             Row(
               children: [
                 Expanded(
