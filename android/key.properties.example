@@ -1,0 +1,12 @@
+# Copy this file to `android/key.properties` and fill in the values below.
+# Do NOT commit the real `android/key.properties` — it is already in .gitignore.
+#
+# `scripts/release.sh new-keystore` will generate a keystore and print the
+# exact values to paste here.
+
+storePassword=REPLACE_ME
+keyPassword=REPLACE_ME
+keyAlias=tile-flip-upload
+# Absolute path OR path relative to the android/ directory. Typical:
+#   storeFile=upload-keystore.jks
+storeFile=upload-keystore.jks
