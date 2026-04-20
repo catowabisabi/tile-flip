@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../config/ads_config.dart';
+import 'consent_service.dart';
 
 /// Shows an interstitial ad after every N wins. Tuned to ~1 in 3 so the game
 /// stays casual-friendly.
@@ -22,6 +23,16 @@ class AdsService {
     if (_initialized || !AdsConfig.isSupported) return;
     _initialized = true;
     try {
+      // Run UMP first; AdMob policy requires consent before ad requests in
+      // EEA / UK / Swiss regions. Returns fast (no-op) for users outside
+      // those regions.
+      await ConsentService.instance.initialize();
+      if (!await ConsentInformation.instance.canRequestAds()) {
+        // User declined or UMP couldn't resolve consent yet. We skip ad init
+        // for this session; `maybeShowInterstitial` / `banner` will short
+        // circuit below. The user can re-trigger the form from Settings.
+        return;
+      }
       await MobileAds.instance.initialize();
       _loadInterstitial();
     } catch (e, st) {

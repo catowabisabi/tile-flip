@@ -14,6 +14,9 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
   // Fire-and-forget: ad SDK init should never block the first frame.
+  // `AdsService.initialize` internally runs the UMP (GDPR) consent flow
+  // first — if a form is required it shows immediately; `canRequestAds`
+  // must be true before the MobileAds SDK is touched.
   unawaited(AdsService.instance.initialize());
   runApp(const TileFlipApp());
 }
@@ -26,7 +29,7 @@ class TileFlipApp extends StatelessWidget {
     return MaterialApp(
       title: 'Tile Flip',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
+      theme: AppTheme.dark(),
       home: const HomeScreen(),
     );
   }
