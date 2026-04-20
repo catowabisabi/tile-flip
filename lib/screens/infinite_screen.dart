@@ -71,6 +71,9 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
   Future<void> _handleWin() async {
     setState(() => _won = true);
     final store = _store ?? await ProgressStore.load();
+    // Snapshot before recording so we can distinguish a brand-new best
+    // streak from merely tying the existing one.
+    final previousBest = store.infiniteBestStreak;
     await store.recordInfiniteWin();
     final winCount = await store.incrementWinCount();
     if (winCount % kInterstitialEveryNWins == 0) {
@@ -87,6 +90,7 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
         moves: _puzzle?.moves ?? 0,
         streak: store.infiniteStreak,
         bestStreak: store.infiniteBestStreak,
+        isNewBest: store.infiniteBestStreak > previousBest,
         onNext: () {
           Navigator.of(context).pop();
           setState(() => _loadNext());
@@ -242,6 +246,7 @@ class _InfiniteWinDialog extends StatelessWidget {
     required this.moves,
     required this.streak,
     required this.bestStreak,
+    required this.isNewBest,
     required this.onNext,
     required this.onQuit,
   });
@@ -249,12 +254,12 @@ class _InfiniteWinDialog extends StatelessWidget {
   final int moves;
   final int streak;
   final int bestStreak;
+  final bool isNewBest;
   final VoidCallback onNext;
   final VoidCallback onQuit;
 
   @override
   Widget build(BuildContext context) {
-    final newBest = streak == bestStreak && streak > 0;
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -288,7 +293,7 @@ class _InfiniteWinDialog extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              '$moves moves · best $bestStreak${newBest ? " (new!)" : ""}',
+              '$moves moves · best $bestStreak${isNewBest ? " (new!)" : ""}',
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.inkSoft.withValues(alpha: 0.85),
