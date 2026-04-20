@@ -145,9 +145,15 @@ class _GameScreenState extends State<GameScreen> {
                         par: widget.level.par,
                         size: widget.level.size,
                       ),
-                      const Spacer(),
-                      PuzzleGrid(puzzle: _puzzle, onTap: _onTap),
-                      const Spacer(),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: Center(
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: PuzzleGrid(puzzle: _puzzle, onTap: _onTap),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),

@@ -158,9 +158,18 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
                               moves: puzzle.moves,
                               size: _currentSize,
                             ),
-                            const Spacer(),
-                            PuzzleGrid(puzzle: puzzle, onTap: _onTap),
-                            const Spacer(),
+                            const SizedBox(height: 16),
+                            Expanded(
+                              child: Center(
+                                child: AspectRatio(
+                                  aspectRatio: 1,
+                                  child: PuzzleGrid(
+                                    puzzle: puzzle,
+                                    onTap: _onTap,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
