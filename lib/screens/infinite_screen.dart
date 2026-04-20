@@ -136,7 +136,7 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
           ),
           IconButton(
             tooltip: 'Skip (resets streak)',
-            onPressed: puzzle == null ? null : _skip,
+            onPressed: puzzle == null || _won ? null : _skip,
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
