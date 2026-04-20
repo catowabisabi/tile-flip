@@ -15,42 +15,64 @@ class AdsService {
   AdsService._();
   static final AdsService instance = AdsService._();
 
-  bool _initialized = false;
+  /// Guards against re-entering [initialize]. Set at the start of the call.
+  bool _initStarted = false;
+
+  /// True once the MobileAds SDK has actually been initialized and consent
+  /// resolved favourably. Gates [banner] and [maybeShowInterstitial] so they
+  /// never touch the SDK before it is ready (or if the user denied consent).
+  bool _adsReady = false;
   InterstitialAd? _interstitial;
   bool _loadingInterstitial = false;
 
   Future<void> initialize() async {
-    if (_initialized || !AdsConfig.isSupported) return;
-    _initialized = true;
+    if (_initStarted || !AdsConfig.isSupported) return;
+    _initStarted = true;
     try {
       // Run UMP first; AdMob policy requires consent before ad requests in
       // EEA / UK / Swiss regions. Returns fast (no-op) for users outside
       // those regions.
       await ConsentService.instance.initialize();
       if (!await ConsentInformation.instance.canRequestAds()) {
-        // User declined or UMP couldn't resolve consent yet. We skip ad init
-        // for this session; `maybeShowInterstitial` / `banner` will short
-        // circuit below. The user can re-trigger the form from Settings.
+        // User declined or UMP couldn't resolve consent yet. Leave _adsReady
+        // false so banner() and maybeShowInterstitial() skip all SDK calls.
+        // User can re-trigger the form from Settings, then call initialize
+        // again via [retryAfterConsentChange].
         return;
       }
       await MobileAds.instance.initialize();
+      _adsReady = true;
       _loadInterstitial();
     } catch (e, st) {
       debugPrint('AdsService init failed: $e\n$st');
     }
   }
 
+  /// Re-attempt SDK initialization after the user updates their consent via
+  /// Settings. Safe to call any number of times; no-op once ads are ready.
+  Future<void> retryAfterConsentChange() async {
+    if (_adsReady || !AdsConfig.isSupported) return;
+    try {
+      if (!await ConsentInformation.instance.canRequestAds()) return;
+      await MobileAds.instance.initialize();
+      _adsReady = true;
+      _loadInterstitial();
+    } catch (e, st) {
+      debugPrint('AdsService retry failed: $e\n$st');
+    }
+  }
+
   /// Creates a banner ad widget sized to the given available width. Returns
   /// `null` on unsupported platforms.
   Widget? banner({required double width}) {
-    if (!AdsConfig.isSupported || !_initialized) return null;
+    if (!AdsConfig.isSupported || !_adsReady) return null;
     return _BannerAdWidget(width: width);
   }
 
   /// Show the preloaded interstitial if available; otherwise load one for next
   /// time and return immediately. Caller should not await the ad experience.
   Future<void> maybeShowInterstitial() async {
-    if (!AdsConfig.isSupported || !_initialized) return;
+    if (!AdsConfig.isSupported || !_adsReady) return;
     final ad = _interstitial;
     if (ad == null) {
       _loadInterstitial();

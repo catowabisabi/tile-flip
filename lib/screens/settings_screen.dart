@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../config/ads_config.dart';
+import '../services/ads.dart';
 import '../services/consent_service.dart';
 import '../theme.dart';
 import '../widgets/glass.dart';
@@ -22,6 +23,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_busy) return;
     setState(() => _busy = true);
     final shown = await ConsentService.instance.showPrivacyOptionsForm();
+    // If the user granted consent this round, spin up the ads SDK now so the
+    // banner/interstitials start working without an app restart.
+    await AdsService.instance.retryAfterConsentChange();
     if (!mounted) return;
     setState(() => _busy = false);
     if (!shown) {
