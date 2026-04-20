@@ -44,7 +44,11 @@ android {
             create("release") {
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
+                // Resolve storeFile relative to the android/ directory (rootProject)
+                // so that `storeFile=upload-keystore.jks` points at
+                // android/upload-keystore.jks, matching where scripts/release.sh
+                // creates the keystore and what key.properties.example documents.
+                storeFile = keystoreProperties["storeFile"]?.let { rootProject.file(it as String) }
                 storePassword = keystoreProperties["storePassword"] as String
             }
         }

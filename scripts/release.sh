@@ -99,8 +99,10 @@ cmd_apk() {
 cmd_fingerprint() {
   require_keystore
   local alias pass
-  alias="$(awk -F= '/^keyAlias=/ {print $2}' "$KEY_PROPERTIES_PATH")"
-  pass="$(awk -F= '/^storePassword=/ {print $2}' "$KEY_PROPERTIES_PATH")"
+  # Use sed so values containing '=' (e.g. `storePassword=ab=cd`) are not
+  # truncated by an awk field split.
+  alias="$(sed -n 's/^keyAlias=//p' "$KEY_PROPERTIES_PATH")"
+  pass="$(sed -n 's/^storePassword=//p' "$KEY_PROPERTIES_PATH")"
   keytool -list -v \
     -keystore "$KEYSTORE_PATH" \
     -alias "$alias" \
