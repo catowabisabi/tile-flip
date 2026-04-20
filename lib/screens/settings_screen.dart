@@ -68,10 +68,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _AboutRow(
-                      label: 'Version',
-                      value: '1.0.0',
-                    ),
+                    _AboutRow(label: 'Version', value: '1.0.0'),
                     const SizedBox(height: 8),
                     _AboutRow(
                       label: 'Build',
@@ -157,10 +154,7 @@ class _PrivacyChoicesTile extends StatelessWidget {
                     ),
                   )
                 else
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.ink,
-                  ),
+                  const Icon(Icons.chevron_right_rounded, color: AppColors.ink),
               ],
             ),
           ),
@@ -184,8 +178,9 @@ class _AboutRow extends StatelessWidget {
         Text(label, style: Theme.of(context).textTheme.bodyMedium),
         Text(
           value,
-          style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(color: AppColors.inkSoft),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft),
         ),
       ],
     );
