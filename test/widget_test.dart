@@ -43,11 +43,52 @@ void main() {
     });
   });
 
-  testWidgets('HomeScreen renders title and play button', (tester) async {
+  group('LevelCatalog', () {
+    test('has 1000 levels', () {
+      expect(LevelCatalog.totalLevels, 1000);
+    });
+
+    test('at(n) is stable (same input → same level)', () {
+      final a = LevelCatalog.at(250);
+      final b = LevelCatalog.at(250);
+      expect(a.index, b.index);
+      expect(a.size, b.size);
+      expect(a.shuffleTaps, b.shuffleTaps);
+      expect(a.seed, b.seed);
+    });
+
+    test('difficulty curve steps up monotonically in size', () {
+      expect(LevelCatalog.at(1).size, 4);
+      expect(LevelCatalog.at(50).size, 4);
+      expect(LevelCatalog.at(150).size, 5);
+      expect(LevelCatalog.at(400).size, 6);
+      expect(LevelCatalog.at(800).size, 7);
+      expect(LevelCatalog.at(1000).size, 7);
+    });
+
+    test('clamps out-of-range indices', () {
+      expect(LevelCatalog.at(0).index, 1);
+      expect(LevelCatalog.at(9999).index, LevelCatalog.totalLevels);
+    });
+
+    test('shuffle taps grow with level index within a tier', () {
+      expect(
+        LevelCatalog.at(1).shuffleTaps <= LevelCatalog.at(15).shuffleTaps,
+        isTrue,
+      );
+      expect(
+        LevelCatalog.at(101).shuffleTaps <= LevelCatalog.at(290).shuffleTaps,
+        isTrue,
+      );
+    });
+  });
+
+  testWidgets('HomeScreen renders title and mode buttons', (tester) async {
     await tester.pumpWidget(
       MaterialApp(theme: AppTheme.light(), home: const HomeScreen()),
     );
     expect(find.text('Tile Flip'), findsOneWidget);
-    expect(find.text('PLAY'), findsOneWidget);
+    expect(find.text('LEVELS'), findsOneWidget);
+    expect(find.text('INFINITE'), findsOneWidget);
   });
 }

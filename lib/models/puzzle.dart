@@ -107,28 +107,74 @@ class Level {
   }
 }
 
+/// Procedurally-generated level catalog with [totalLevels] entries.
+///
+/// Rather than hand-rolling 1000 rows, size and shuffle-count are derived from
+/// the level index via [_curveFor]. This keeps the binary tiny and makes the
+/// difficulty curve easy to re-tune in one place.
 class LevelCatalog {
-  static const List<Level> levels = [
-    // Gentle intro at 4x4.
-    Level(index: 1, size: 4, shuffleTaps: 2, par: 2, seed: 101),
-    Level(index: 2, size: 4, shuffleTaps: 3, par: 3, seed: 102),
-    Level(index: 3, size: 4, shuffleTaps: 4, par: 4, seed: 103),
-    Level(index: 4, size: 4, shuffleTaps: 5, par: 5, seed: 104),
-    Level(index: 5, size: 4, shuffleTaps: 6, par: 6, seed: 105),
-    // Step up to 5x5.
-    Level(index: 6, size: 5, shuffleTaps: 4, par: 4, seed: 201),
-    Level(index: 7, size: 5, shuffleTaps: 5, par: 5, seed: 202),
-    Level(index: 8, size: 5, shuffleTaps: 6, par: 6, seed: 203),
-    Level(index: 9, size: 5, shuffleTaps: 7, par: 7, seed: 204),
-    Level(index: 10, size: 5, shuffleTaps: 8, par: 8, seed: 205),
-    // Step up to 6x6.
-    Level(index: 11, size: 6, shuffleTaps: 6, par: 6, seed: 301),
-    Level(index: 12, size: 6, shuffleTaps: 7, par: 7, seed: 302),
-    Level(index: 13, size: 6, shuffleTaps: 8, par: 8, seed: 303),
-    Level(index: 14, size: 6, shuffleTaps: 9, par: 9, seed: 304),
-    Level(index: 15, size: 6, shuffleTaps: 10, par: 10, seed: 305),
+  static const int totalLevels = 1000;
+
+  /// Size / shuffle-tap curve. Each tier linearly ramps shuffle taps across a
+  /// range of levels; size steps up at tier boundaries.
+  ///
+  /// Tiers (inclusive ranges):
+  ///   1..20    : 4x4, 2 → 5 taps   (warm-up)
+  ///   21..100  : 4x4, 4 → 9
+  ///   101..300 : 5x5, 5 → 12
+  ///   301..600 : 6x6, 8 → 18
+  ///   601..1000: 7x7, 12 → 25       (hardcore)
+  static const List<_Tier> _tiers = [
+    _Tier(startIndex: 1, endIndex: 20, size: 4, minTaps: 2, maxTaps: 5),
+    _Tier(startIndex: 21, endIndex: 100, size: 4, minTaps: 4, maxTaps: 9),
+    _Tier(startIndex: 101, endIndex: 300, size: 5, minTaps: 5, maxTaps: 12),
+    _Tier(startIndex: 301, endIndex: 600, size: 6, minTaps: 8, maxTaps: 18),
+    _Tier(startIndex: 601, endIndex: 1000, size: 7, minTaps: 12, maxTaps: 25),
   ];
 
-  static Level byIndex(int index) =>
-      levels.firstWhere((l) => l.index == index, orElse: () => levels.first);
+  static _Tier _tierFor(int index) {
+    for (final t in _tiers) {
+      if (index >= t.startIndex && index <= t.endIndex) return t;
+    }
+    return _tiers.last;
+  }
+
+  /// Returns the level descriptor for [index] (1-based).
+  static Level at(int index) {
+    final clamped = index.clamp(1, totalLevels);
+    final tier = _tierFor(clamped);
+    final span = (tier.endIndex - tier.startIndex).clamp(1, 1 << 30);
+    final t = (clamped - tier.startIndex) / span;
+    final taps = tier.minTaps + ((tier.maxTaps - tier.minTaps) * t).round();
+    return Level(
+      index: clamped,
+      size: tier.size,
+      shuffleTaps: taps,
+      par: taps,
+      seed: 1000 + clamped,
+    );
+  }
+
+  /// Kept for backward-compatibility with tests / widgets that expect a list.
+  /// Use [at] for O(1) access; this realises the full list eagerly.
+  static List<Level> get levels =>
+      List<Level>.generate(totalLevels, (i) => at(i + 1), growable: false);
+
+  static Level byIndex(int index) => at(index);
+}
+
+class _Tier {
+  final int startIndex;
+  final int endIndex;
+  final int size;
+  final int minTaps;
+  final int maxTaps;
+
+  const _Tier({
+    required this.startIndex,
+    required this.endIndex,
+    required this.size,
+    required this.minTaps,
+    required this.maxTaps,
+  });
 }

@@ -101,11 +101,11 @@ class _GameScreenState extends State<GameScreen> {
 
   void _goToNext() {
     final nextIdx = widget.level.index + 1;
-    if (nextIdx > LevelCatalog.levels.last.index) {
+    if (nextIdx > LevelCatalog.totalLevels) {
       Navigator.of(context).pop();
       return;
     }
-    final next = LevelCatalog.byIndex(nextIdx);
+    final next = LevelCatalog.at(nextIdx);
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(builder: (_) => GameScreen(level: next)),
     );
