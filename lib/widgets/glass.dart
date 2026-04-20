@@ -28,6 +28,14 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(borderRadius);
+    // A BoxDecoration's `gradient` always wins over `color` in Flutter's paint
+    // pipeline, so we derive the gradient stops from [fillAlpha] to preserve
+    // the top-left→bottom-right sheen while still honouring the caller's
+    // requested translucency. The 2.2 / 0.6 multipliers match the hand-tuned
+    // `0x30FFFFFF` / `0x0DFFFFFF` ratio that was used on the approved
+    // screenshot when [fillAlpha] is the default 0.08.
+    final topAlpha = (fillAlpha * 2.2).clamp(0.0, 1.0);
+    final bottomAlpha = (fillAlpha * 0.6).clamp(0.0, 1.0);
     return ClipRRect(
       borderRadius: radius,
       child: BackdropFilter(
@@ -35,12 +43,14 @@ class GlassCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: radius,
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0x30FFFFFF), Color(0x0DFFFFFF)],
+              colors: [
+                Colors.white.withValues(alpha: topAlpha),
+                Colors.white.withValues(alpha: bottomAlpha),
+              ],
             ),
-            color: AppColors.glassFill(fillAlpha),
             border: Border.all(color: AppColors.glassBorder(), width: 1),
           ),
           padding: padding,
