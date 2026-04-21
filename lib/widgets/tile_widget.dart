@@ -33,20 +33,23 @@ class _TileWidgetState extends State<TileWidget>
     duration: const Duration(milliseconds: 340),
     value: 1.0,
   );
-  late bool _shownDark = widget.dark;
+
+  // Track the "from" and "to" faces for the in-flight animation. Reading these
+  // off `_ctrl.value` inside the builder (rather than a `Future.delayed` timer)
+  // means a rapid second flip that restarts the controller self-cancels the
+  // first flip's midpoint face swap — no stale callbacks possible.
+  late bool _fromDark = widget.dark;
+  late bool _toDark = widget.dark;
 
   @override
   void didUpdateWidget(covariant TileWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.dark != oldWidget.dark) {
-      _ctrl.forward(from: 0.0).then((_) {
-        if (mounted) setState(() => _shownDark = widget.dark);
-      });
-      // Swap the shown face at the halfway point of the flip so the colour
-      // change happens when the tile is edge-on and invisible.
-      Future<void>.delayed(const Duration(milliseconds: 170), () {
-        if (mounted) setState(() => _shownDark = widget.dark);
-      });
+      // If an animation is still in flight, its mid-flight "to" face becomes
+      // the starting face of the new flip.
+      _fromDark = _ctrl.value < 0.5 ? _fromDark : _toDark;
+      _toDark = widget.dark;
+      _ctrl.forward(from: 0.0);
     }
   }
 
@@ -80,10 +83,14 @@ class _TileWidgetState extends State<TileWidget>
             ..setEntry(3, 2, 0.001)
             ..rotateY(angle)
             ..scaleByDouble(scale, scale, 1.0, 1.0);
+          // Show the old face while the tile is rotating toward edge-on, then
+          // the new face as it rotates back. At t=0.5 the tile is edge-on so
+          // the swap is visually invisible.
+          final showDark = t < 0.5 ? _fromDark : _toDark;
           return Transform(
             alignment: Alignment.center,
             transform: m,
-            child: _TileFace(dark: _shownDark, palette: widget.palette),
+            child: _TileFace(dark: showDark, palette: widget.palette),
           );
         },
       ),
