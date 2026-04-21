@@ -418,10 +418,7 @@ class _InfiniteWinDialog extends StatelessWidget {
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
-                onPressed: onNext,
-                child: const Text('Next'),
-              ),
+              child: FilledButton(onPressed: onNext, child: const Text('Next')),
             ),
           ],
         ),

@@ -73,9 +73,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await store.resetAll();
     await SettingsService.instance.resetTutorialSeen();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Progress reset.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Progress reset.')));
   }
 
   @override
@@ -167,9 +167,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 28),
               Text(
                 'Danger zone',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppColors.error,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: AppColors.error),
               ),
               const SizedBox(height: 10),
               GlassCard(
@@ -260,9 +260,9 @@ class _ToggleTile extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(subtitle, style: Theme.of(context).textTheme.bodySmall),

@@ -30,14 +30,13 @@ class ConfettiBurst extends StatefulWidget {
 
 class _ConfettiBurstState extends State<ConfettiBurst>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(
-    vsync: this,
-    duration: widget.duration,
-  )..addStatusListener((status) {
-    if (status == AnimationStatus.completed) {
-      widget.onComplete?.call();
-    }
-  });
+  late final AnimationController _ctrl =
+      AnimationController(vsync: this, duration: widget.duration)
+        ..addStatusListener((status) {
+          if (status == AnimationStatus.completed) {
+            widget.onComplete?.call();
+          }
+        });
 
   late List<_Particle> _particles = _spawn();
 
