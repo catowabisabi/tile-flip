@@ -2,15 +2,24 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/infinite_difficulty.dart';
 import '../models/puzzle.dart';
+import '../models/tile_theme.dart';
 import '../services/ads.dart';
+import '../services/settings_service.dart';
 import '../services/storage.dart';
 import '../theme.dart';
 import '../widgets/banner_ad_slot.dart';
+import '../widgets/coin_hud.dart';
+import '../widgets/confetti.dart';
 import '../widgets/glass.dart';
 import '../widgets/puzzle_grid.dart';
+
+/// Coins granted per Infinite mode win.
+const int kInfiniteCoinsPerWin = 5;
 
 /// Endless mode: solve one puzzle, get another. Difficulty scales with the
 /// current streak. No stars, no par — just keep going.
@@ -26,6 +35,7 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
   int _currentSize = 4;
   final List<Puzzle> _history = [];
   bool _won = false;
+  bool _celebrate = false;
   ProgressStore? _store;
   final Random _rng = Random();
 
@@ -52,6 +62,7 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
     );
     _history.clear();
     _won = false;
+    _celebrate = false;
   }
 
   void _onTap(int row, int col) {
@@ -69,12 +80,19 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
   }
 
   Future<void> _handleWin() async {
-    setState(() => _won = true);
+    setState(() {
+      _won = true;
+      _celebrate = SettingsService.instance.effects.value;
+    });
+    if (SettingsService.instance.haptics.value) {
+      unawaited(HapticFeedback.mediumImpact());
+    }
     final store = _store ?? await ProgressStore.load();
     // Snapshot before recording so we can distinguish a brand-new best
     // streak from merely tying the existing one.
     final previousBest = store.infiniteBestStreak;
     await store.recordInfiniteWin();
+    await store.addCoins(kInfiniteCoinsPerWin);
     final winCount = await store.incrementWinCount();
     if (winCount % kInterstitialEveryNWins == 0) {
       unawaited(AdsService.instance.maybeShowInterstitial());
@@ -91,6 +109,8 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
         streak: store.infiniteStreak,
         bestStreak: store.infiniteBestStreak,
         isNewBest: store.infiniteBestStreak > previousBest,
+        coinsEarned: kInfiniteCoinsPerWin,
+        onShare: () => _shareWin(streak: store.infiniteStreak),
         onNext: () {
           Navigator.of(context).pop();
           setState(() => _loadNext());
@@ -101,6 +121,13 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _shareWin({required int streak}) async {
+    final text =
+        'Tile Flip Infinite — streak $streak 🔥 and still going. '
+        'Can you beat me? #TileFlip';
+    await Share.share(text);
   }
 
   /// Skip the current puzzle. Giving up breaks the streak — resets to 0 and
@@ -124,52 +151,97 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
     final streak = _store?.infiniteStreak ?? 0;
     final best = _store?.infiniteBestStreak ?? 0;
     final puzzle = _puzzle;
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text('Infinite'),
-        actions: [
-          IconButton(
-            tooltip: 'Undo',
-            onPressed: _history.isEmpty || _won ? null : _undo,
-            icon: const Icon(Icons.undo_rounded),
-          ),
-          IconButton(
-            tooltip: 'Skip (resets streak)',
-            onPressed: puzzle == null || _won ? null : _skip,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-      body: AppBackdrop(
-        child: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: puzzle == null
-                    ? const Center(child: CircularProgressIndicator())
-                    : Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                        child: Column(
-                          children: [
-                            _InfiniteStatsBar(
-                              streak: streak,
-                              best: best,
-                              moves: puzzle.moves,
-                              size: _currentSize,
-                            ),
-                            const Spacer(),
-                            PuzzleGrid(puzzle: puzzle, onTap: _onTap),
-                            const Spacer(),
-                          ],
-                        ),
-                      ),
+    return ValueListenableBuilder<String>(
+      valueListenable: SettingsService.instance.infinitePaletteId,
+      builder: (context, paletteId, _) {
+        final palette = paletteById(paletteId);
+        return Scaffold(
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            title: const Text('Infinite'),
+            actions: [
+              const Padding(
+                padding: EdgeInsets.only(right: 4),
+                child: Center(child: CoinHud()),
               ),
-              const BannerAdSlot(),
+              IconButton(
+                tooltip: 'Undo',
+                onPressed: _history.isEmpty || _won ? null : _undo,
+                icon: const Icon(Icons.undo_rounded),
+              ),
+              IconButton(
+                tooltip: 'Skip (resets streak)',
+                onPressed: puzzle == null || _won ? null : _skip,
+                icon: const Icon(Icons.refresh_rounded),
+              ),
             ],
           ),
-        ),
-      ),
+          body: AppBackdrop(
+            child: Stack(
+              children: [
+                SafeArea(
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: puzzle == null
+                            ? const Center(child: CircularProgressIndicator())
+                            : Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  16,
+                                  20,
+                                  16,
+                                ),
+                                child: Column(
+                                  children: [
+                                    _InfiniteStatsBar(
+                                      streak: streak,
+                                      best: best,
+                                      moves: puzzle.moves,
+                                      size: _currentSize,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Expanded(
+                                      child: Center(
+                                        child: AspectRatio(
+                                          aspectRatio: 1,
+                                          child: PuzzleGrid(
+                                            puzzle: puzzle,
+                                            onTap: _onTap,
+                                            palette: palette,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                      ),
+                      const BannerAdSlot(),
+                    ],
+                  ),
+                ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: ConfettiBurst(
+                      active: _celebrate,
+                      colors: [
+                        palette.accent,
+                        palette.lightStart,
+                        palette.darkStart,
+                        AppColors.ink,
+                      ],
+                      onComplete: () {
+                        if (mounted) setState(() => _celebrate = false);
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -247,16 +319,20 @@ class _InfiniteWinDialog extends StatelessWidget {
     required this.streak,
     required this.bestStreak,
     required this.isNewBest,
+    required this.coinsEarned,
     required this.onNext,
     required this.onQuit,
+    required this.onShare,
   });
 
   final int moves;
   final int streak;
   final int bestStreak;
   final bool isNewBest;
+  final int coinsEarned;
   final VoidCallback onNext;
   final VoidCallback onQuit;
+  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -299,23 +375,50 @@ class _InfiniteWinDialog extends StatelessWidget {
                 color: AppColors.inkSoft.withValues(alpha: 0.85),
               ),
             ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.monetization_on_rounded,
+                  color: AppColors.accent,
+                  size: 18,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '+$coinsEarned coins',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 22),
             Row(
               children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onShare,
+                    icon: const Icon(Icons.share_rounded, size: 18),
+                    label: const Text('Share'),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton(
                     onPressed: onQuit,
                     child: const Text('Quit'),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: onNext,
-                    child: const Text('Next'),
-                  ),
-                ),
               ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(onPressed: onNext, child: const Text('Next')),
             ),
           ],
         ),

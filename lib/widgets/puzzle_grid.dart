@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 
 import '../models/puzzle.dart';
+import '../models/tile_theme.dart';
 import 'tile_widget.dart';
 
 class PuzzleGrid extends StatelessWidget {
-  const PuzzleGrid({super.key, required this.puzzle, required this.onTap});
+  const PuzzleGrid({
+    super.key,
+    required this.puzzle,
+    required this.onTap,
+    required this.palette,
+  });
 
   final Puzzle puzzle;
   final void Function(int row, int col) onTap;
+  final TilePalette palette;
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +39,7 @@ class PuzzleGrid extends StatelessWidget {
                         height: tileSize,
                         child: TileWidget(
                           dark: puzzle.tileAt(r, c),
+                          palette: palette,
                           onTap: () => onTap(r, c),
                         ),
                       ),
