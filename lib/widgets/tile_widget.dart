@@ -77,8 +77,10 @@ class _TileWidgetState extends State<TileWidget>
           final t = _ctrl.value;
           // Scale pop: down to 0.92 at the middle, back to 1.0 at the ends.
           final scale = 1.0 - 0.08 * sin(t * pi);
-          // Rotate around Y by up to pi; combined with perspective for depth.
-          final angle = t * pi;
+          // Rotate around Y: 0 at rest → edge-on (pi/2) at midpoint → 0 at end.
+          // Using sin(t·π)·π/2 keeps t=0 and t=1 visually identical (no mirror),
+          // so restarting the controller via forward(from:0) never pops.
+          final angle = sin(t * pi) * (pi / 2);
           final m = Matrix4.identity()
             ..setEntry(3, 2, 0.001)
             ..rotateY(angle)
