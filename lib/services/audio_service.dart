@@ -86,11 +86,16 @@ class AudioService {
   Future<void> _playBgm(String assetPath) async {
     if (_currentBgmAsset == assetPath) {
       // Already on the right track; just make sure it's playing & at the
-      // right volume (e.g. after resume from background).
+      // right volume (e.g. after resume from background, audio focus loss,
+      // or an incoming call interrupting playback).
       _applyBgmVolume();
-      if (_bgmPlayer.state != PlayerState.playing) {
+      if (_bgmPlayer.state != PlayerState.playing &&
+          SettingsService.instance.musicVolume.value > 0) {
         try {
-          await _bgmPlayer.resume();
+          // Use play(AssetSource) instead of resume(): resume() only works
+          // from `paused`, but the player may be in `stopped`/`completed`
+          // after an interruption.
+          await _bgmPlayer.play(AssetSource(assetPath));
         } catch (_) {}
       }
       return;
