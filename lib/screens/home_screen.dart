@@ -28,8 +28,8 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context)
         .push(MaterialPageRoute<void>(builder: (_) => const LevelsScreen()))
         .then((_) {
-      if (mounted) AudioService.instance.playMenuBgm();
-    });
+          if (mounted) AudioService.instance.playMenuBgm();
+        });
   }
 
   void _openInfinite() {
@@ -37,15 +37,15 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context)
         .push(MaterialPageRoute<void>(builder: (_) => const InfiniteScreen()))
         .then((_) {
-      if (mounted) AudioService.instance.playMenuBgm();
-    });
+          if (mounted) AudioService.instance.playMenuBgm();
+        });
   }
 
   void _openSettings() {
     AudioService.instance.playButtonTap();
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
   }
 
   @override
