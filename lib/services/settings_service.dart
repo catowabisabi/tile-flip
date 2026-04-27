@@ -16,6 +16,8 @@ class SettingsService {
   static const _kEffects = 'settings_effects';
   static const _kTutorialSeen = 'settings_tutorial_seen';
   static const _kInfinitePaletteId = 'settings_infinite_palette_id';
+  static const _kMusicVolume = 'settings_music_volume';
+  static const _kSfxVolume = 'settings_sfx_volume';
 
   SharedPreferences? _prefs;
   bool _loaded = false;
@@ -27,6 +29,10 @@ class SettingsService {
     kTilePalettes.first.id,
   );
 
+  // Audio levels in [0.0, 1.0]. 0 means muted.
+  final ValueNotifier<double> musicVolume = ValueNotifier<double>(0.5);
+  final ValueNotifier<double> sfxVolume = ValueNotifier<double>(0.8);
+
   Future<void> load() async {
     if (_loaded) return;
     _prefs = await SharedPreferences.getInstance();
@@ -35,6 +41,8 @@ class SettingsService {
     tutorialSeen.value = _prefs!.getBool(_kTutorialSeen) ?? false;
     infinitePaletteId.value =
         _prefs!.getString(_kInfinitePaletteId) ?? kTilePalettes.first.id;
+    musicVolume.value = _prefs!.getDouble(_kMusicVolume) ?? 0.5;
+    sfxVolume.value = _prefs!.getDouble(_kSfxVolume) ?? 0.8;
     _loaded = true;
   }
 
@@ -62,5 +70,17 @@ class SettingsService {
   Future<void> setInfinitePaletteId(String id) async {
     infinitePaletteId.value = id;
     await _prefs?.setString(_kInfinitePaletteId, id);
+  }
+
+  Future<void> setMusicVolume(double value) async {
+    final v = value.clamp(0.0, 1.0);
+    musicVolume.value = v;
+    await _prefs?.setDouble(_kMusicVolume, v);
+  }
+
+  Future<void> setSfxVolume(double value) async {
+    final v = value.clamp(0.0, 1.0);
+    sfxVolume.value = v;
+    await _prefs?.setDouble(_kSfxVolume, v);
   }
 }
