@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
@@ -116,18 +118,24 @@ class AudioService {
     } catch (_) {}
   }
 
+  // Listener callback must be sync; delegate to an async worker so the
+  // try/catch can actually catch errors from the platform channel.
   void _applyBgmVolume() {
+    unawaited(_doApplyBgmVolume());
+  }
+
+  Future<void> _doApplyBgmVolume() async {
     final vol = SettingsService.instance.musicVolume.value;
     try {
-      _bgmPlayer.setVolume(vol);
+      await _bgmPlayer.setVolume(vol);
       if (vol <= 0) {
-        _bgmPlayer.pause();
+        await _bgmPlayer.pause();
       } else if (_currentBgmAsset != null &&
           _bgmPlayer.state != PlayerState.playing) {
         // Player may be in `stopped` (source set, never played — happens when
         // BGM was first loaded while muted) or `paused`. `resume()` only
         // works from `paused`; `play(AssetSource)` covers both.
-        _bgmPlayer.play(AssetSource(_currentBgmAsset!));
+        await _bgmPlayer.play(AssetSource(_currentBgmAsset!));
       }
     } catch (_) {}
   }
