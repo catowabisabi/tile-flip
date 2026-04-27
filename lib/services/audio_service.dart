@@ -124,7 +124,10 @@ class AudioService {
         _bgmPlayer.pause();
       } else if (_currentBgmAsset != null &&
           _bgmPlayer.state != PlayerState.playing) {
-        _bgmPlayer.resume();
+        // Player may be in `stopped` (source set, never played — happens when
+        // BGM was first loaded while muted) or `paused`. `resume()` only
+        // works from `paused`; `play(AssetSource)` covers both.
+        _bgmPlayer.play(AssetSource(_currentBgmAsset!));
       }
     } catch (_) {}
   }
