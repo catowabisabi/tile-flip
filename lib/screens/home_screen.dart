@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 import '../widgets/banner_ad_slot.dart';
+import '../widgets/coin_hud.dart';
 import '../widgets/glass.dart';
 import 'infinite_screen.dart';
 import 'levels_screen.dart';
@@ -20,8 +21,9 @@ class HomeScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    const CoinHud(),
                     _SettingsButton(
                       onPressed: () {
                         Navigator.of(context).push(

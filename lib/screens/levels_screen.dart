@@ -4,6 +4,7 @@ import '../models/puzzle.dart';
 import '../services/storage.dart';
 import '../theme.dart';
 import '../widgets/banner_ad_slot.dart';
+import '../widgets/coin_hud.dart';
 import '../widgets/glass.dart';
 import 'game_screen.dart';
 
@@ -38,7 +39,15 @@ class _LevelsScreenState extends State<LevelsScreen> {
     final store = _store;
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(title: const Text('Levels')),
+      appBar: AppBar(
+        title: const Text('Levels'),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 12),
+            child: Center(child: CoinHud()),
+          ),
+        ],
+      ),
       body: AppBackdrop(
         child: SafeArea(
           child: Column(

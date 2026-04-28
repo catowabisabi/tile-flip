@@ -1,14 +1,24 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/puzzle.dart';
+import '../models/tile_theme.dart';
 import '../services/ads.dart';
+import '../services/settings_service.dart';
 import '../services/storage.dart';
 import '../theme.dart';
 import '../widgets/banner_ad_slot.dart';
+import '../widgets/coin_hud.dart';
+import '../widgets/confetti.dart';
 import '../widgets/glass.dart';
 import '../widgets/puzzle_grid.dart';
+import '../widgets/tutorial_overlay.dart';
+
+/// Coins granted on level completion: `stars × kCoinsPerStar`.
+const int kCoinsPerStar = 10;
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key, required this.level});
@@ -22,19 +32,22 @@ class _GameScreenState extends State<GameScreen> {
   late Puzzle _puzzle;
   final List<Puzzle> _history = [];
   bool _won = false;
+  bool _celebrate = false;
+  bool _showTutorial = false;
   ProgressStore? _store;
 
   @override
   void initState() {
     super.initState();
     _puzzle = widget.level.build();
+    _showTutorial = !SettingsService.instance.tutorialSeen.value;
     ProgressStore.load().then((store) {
       if (mounted) setState(() => _store = store);
     });
   }
 
   void _onTap(int row, int col) {
-    if (_won) return;
+    if (_won || _showTutorial) return;
     setState(() {
       _history.add(_puzzle);
       _puzzle = _puzzle.tap(row, col);
@@ -45,7 +58,13 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _handleWin() async {
-    setState(() => _won = true);
+    setState(() {
+      _won = true;
+      _celebrate = SettingsService.instance.effects.value;
+    });
+    if (SettingsService.instance.haptics.value) {
+      unawaited(HapticFeedback.mediumImpact());
+    }
     final store = _store ?? await ProgressStore.load();
     final stars = widget.level.starsFor(_puzzle.moves);
     await store.recordResult(
@@ -54,6 +73,8 @@ class _GameScreenState extends State<GameScreen> {
       stars: stars,
     );
     await store.unlockUpTo(widget.level.index + 1);
+    final coinsEarned = stars * kCoinsPerStar;
+    await store.addCoins(coinsEarned);
     final winCount = await store.incrementWinCount();
 
     if (winCount % kInterstitialEveryNWins == 0) {
@@ -69,6 +90,8 @@ class _GameScreenState extends State<GameScreen> {
         stars: stars,
         moves: _puzzle.moves,
         par: widget.level.par,
+        coinsEarned: coinsEarned,
+        onShare: () => _shareWin(stars: stars),
         onReplay: () {
           Navigator.of(context).pop();
           _restart();
@@ -85,11 +108,21 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
+  Future<void> _shareWin({required int stars}) async {
+    final starLine = '★' * stars + '☆' * (3 - stars);
+    final text =
+        'I just solved Tile Flip — Level ${widget.level.index} '
+        '$starLine in ${_puzzle.moves} moves (par ${widget.level.par}). '
+        'Can you beat me? #TileFlip';
+    await Share.share(text);
+  }
+
   void _restart() {
     setState(() {
       _puzzle = widget.level.build();
       _history.clear();
       _won = false;
+      _celebrate = false;
     });
   }
 
@@ -112,13 +145,23 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
+  void _dismissTutorial() {
+    SettingsService.instance.markTutorialSeen();
+    setState(() => _showTutorial = false);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final palette = paletteForLevel(widget.level.index);
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text('Level ${widget.level.index}'),
         actions: [
+          const Padding(
+            padding: EdgeInsets.only(right: 4),
+            child: Center(child: CoinHud()),
+          ),
           IconButton(
             tooltip: 'Undo',
             onPressed: _history.isEmpty || _won ? null : _undo,
@@ -132,29 +175,60 @@ class _GameScreenState extends State<GameScreen> {
         ],
       ),
       body: AppBackdrop(
-        child: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                  child: Column(
-                    children: [
-                      _StatsBar(
-                        moves: _puzzle.moves,
-                        par: widget.level.par,
-                        size: widget.level.size,
+        child: Stack(
+          children: [
+            SafeArea(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                      child: Column(
+                        children: [
+                          _StatsBar(
+                            moves: _puzzle.moves,
+                            par: widget.level.par,
+                            size: widget.level.size,
+                          ),
+                          const SizedBox(height: 16),
+                          Expanded(
+                            child: Center(
+                              child: AspectRatio(
+                                aspectRatio: 1,
+                                child: PuzzleGrid(
+                                  puzzle: _puzzle,
+                                  onTap: _onTap,
+                                  palette: palette,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const Spacer(),
-                      PuzzleGrid(puzzle: _puzzle, onTap: _onTap),
-                      const Spacer(),
-                    ],
+                    ),
                   ),
+                  const BannerAdSlot(),
+                ],
+              ),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: ConfettiBurst(
+                  active: _celebrate,
+                  colors: [
+                    palette.accent,
+                    palette.lightStart,
+                    palette.darkStart,
+                    AppColors.ink,
+                  ],
+                  onComplete: () {
+                    if (mounted) setState(() => _celebrate = false);
+                  },
                 ),
               ),
-              const BannerAdSlot(),
-            ],
-          ),
+            ),
+            if (_showTutorial) TutorialOverlay(onDismiss: _dismissTutorial),
+          ],
         ),
       ),
     );
@@ -226,16 +300,20 @@ class _WinDialog extends StatelessWidget {
     required this.stars,
     required this.moves,
     required this.par,
+    required this.coinsEarned,
     required this.onReplay,
     required this.onNext,
     required this.onMenu,
+    required this.onShare,
   });
   final int stars;
   final int moves;
   final int par;
+  final int coinsEarned;
   final VoidCallback onReplay;
   final VoidCallback onNext;
   final VoidCallback onMenu;
+  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -293,13 +371,35 @@ class _WinDialog extends StatelessWidget {
                 color: AppColors.inkSoft.withValues(alpha: 0.85),
               ),
             ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.monetization_on_rounded,
+                  color: AppColors.accent,
+                  size: 18,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '+$coinsEarned coins',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 22),
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: onMenu,
-                    child: const Text('Levels'),
+                  child: OutlinedButton.icon(
+                    onPressed: onShare,
+                    icon: const Icon(Icons.share_rounded, size: 18),
+                    label: const Text('Share'),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -307,6 +407,17 @@ class _WinDialog extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: onReplay,
                     child: const Text('Replay'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onMenu,
+                    child: const Text('Levels'),
                   ),
                 ),
                 const SizedBox(width: 10),
