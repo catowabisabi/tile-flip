@@ -31,8 +31,7 @@ class AudioService {
   static const _sfxPoolSize = 4;
   int _sfxCursor = 0;
 
-  final AudioPlayer _bgmPlayer = AudioPlayer(playerId: 'tile_flip_bgm')
-    ..setReleaseMode(ReleaseMode.loop);
+  final AudioPlayer _bgmPlayer = AudioPlayer(playerId: 'tile_flip_bgm');
 
   String? _currentBgmAsset;
   bool _loaded = false;
@@ -41,6 +40,27 @@ class AudioService {
   Future<void> load() async {
     if (_loaded) return;
     try {
+      // Use a background-music-friendly audio context. `gainTransientMayDuck`
+      // means we coexist with notifications / AdMob ad SDK init instead of
+      // grabbing exclusive focus and getting silenced when ads load.
+      await AudioPlayer.global.setAudioContext(
+        AudioContext(
+          android: const AudioContextAndroid(
+            contentType: AndroidContentType.music,
+            usageType: AndroidUsageType.media,
+            audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+          ),
+          iOS: AudioContextIOS(
+            category: AVAudioSessionCategory.ambient,
+            options: const {AVAudioSessionOptions.mixWithOthers},
+          ),
+        ),
+      );
+      // Loop mode must be set before the first play(); the cascade in the
+      // field initializer is async-fire-and-forget, so a fast cold-launch
+      // could call play() before loop took effect, leading to a single play
+      // then silence.
+      await _bgmPlayer.setReleaseMode(ReleaseMode.loop);
       for (var i = 0; i < _sfxPoolSize; i++) {
         final p = AudioPlayer(playerId: 'tile_flip_sfx_$i')
           ..setReleaseMode(ReleaseMode.stop);
