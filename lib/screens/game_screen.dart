@@ -11,6 +11,7 @@ import '../services/audio_service.dart';
 import '../services/settings_service.dart';
 import '../services/storage.dart';
 import '../theme.dart';
+import '../widgets/audio_mixer_button.dart';
 import '../widgets/banner_ad_slot.dart';
 import '../widgets/coin_hud.dart';
 import '../widgets/confetti.dart';
@@ -176,6 +177,7 @@ class _GameScreenState extends State<GameScreen> {
             padding: EdgeInsets.only(right: 4),
             child: Center(child: CoinHud()),
           ),
+          const AudioMixerButton(),
           IconButton(
             tooltip: 'Undo',
             onPressed: _history.isEmpty || _won ? null : _undo,
