@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../models/puzzle.dart';
 import '../models/tile_theme.dart';
 import '../services/ads.dart';
+import '../services/audio_service.dart';
 import '../services/settings_service.dart';
 import '../services/storage.dart';
 import '../theme.dart';
@@ -44,6 +45,7 @@ class _GameScreenState extends State<GameScreen> {
     ProgressStore.load().then((store) {
       if (mounted) setState(() => _store = store);
     });
+    AudioService.instance.playGameplayBgm();
   }
 
   void _onTap(int row, int col) {
@@ -65,6 +67,7 @@ class _GameScreenState extends State<GameScreen> {
     if (SettingsService.instance.haptics.value) {
       unawaited(HapticFeedback.mediumImpact());
     }
+    unawaited(AudioService.instance.playWin());
     final store = _store ?? await ProgressStore.load();
     final stars = widget.level.starsFor(_puzzle.moves);
     await store.recordResult(
@@ -75,6 +78,17 @@ class _GameScreenState extends State<GameScreen> {
     await store.unlockUpTo(widget.level.index + 1);
     final coinsEarned = stars * kCoinsPerStar;
     await store.addCoins(coinsEarned);
+    if (coinsEarned > 0) {
+      // Coin chime slightly after the win flourish so they don't collide.
+      Future<void>.delayed(const Duration(milliseconds: 500), () {
+        AudioService.instance.playCoinEarn();
+      });
+    }
+    if (stars >= 3) {
+      Future<void>.delayed(const Duration(milliseconds: 900), () {
+        AudioService.instance.playThreeStar();
+      });
+    }
     final winCount = await store.incrementWinCount();
 
     if (winCount % kInterstitialEveryNWins == 0) {

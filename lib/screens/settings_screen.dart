@@ -88,6 +88,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
             children: [
+              Text('Audio', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 10),
+              ValueListenableBuilder<double>(
+                valueListenable: settings.musicVolume,
+                builder: (_, value, _) => _VolumeSlider(
+                  icon: Icons.music_note_rounded,
+                  label: 'Music',
+                  value: value,
+                  onChanged: settings.setMusicVolume,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ValueListenableBuilder<double>(
+                valueListenable: settings.sfxVolume,
+                builder: (_, value, _) => _VolumeSlider(
+                  icon: Icons.graphic_eq_rounded,
+                  label: 'Sound effects',
+                  value: value,
+                  onChanged: settings.setSfxVolume,
+                ),
+              ),
+              const SizedBox(height: 28),
               Text('Gameplay', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 10),
               ValueListenableBuilder<bool>(
@@ -466,6 +488,65 @@ class _AboutRow extends StatelessWidget {
           ).textTheme.bodyMedium?.copyWith(color: AppColors.inkSoft),
         ),
       ],
+    );
+  }
+}
+
+class _VolumeSlider extends StatelessWidget {
+  const _VolumeSlider({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String label;
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (value * 100).round();
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      borderRadius: 18,
+      fillAlpha: 0.10,
+      child: Row(
+        children: [
+          Icon(
+            value <= 0 ? Icons.volume_off_rounded : icon,
+            color: AppColors.accent,
+          ),
+          const SizedBox(width: 14),
+          SizedBox(
+            width: 84,
+            child: Text(
+              label,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          Expanded(
+            child: Slider(
+              value: value.clamp(0.0, 1.0),
+              onChanged: onChanged,
+              activeColor: AppColors.accent,
+            ),
+          ),
+          SizedBox(
+            width: 40,
+            child: Text(
+              '$percent',
+              textAlign: TextAlign.right,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

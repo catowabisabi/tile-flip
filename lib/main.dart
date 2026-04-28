@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'screens/home_screen.dart';
 import 'services/ads.dart';
+import 'services/audio_service.dart';
 import 'services/settings_service.dart';
 import 'services/storage.dart';
 import 'theme.dart';
@@ -20,6 +21,7 @@ Future<void> main() async {
   // right value instead of flashing 0.
   await SettingsService.instance.load();
   await ProgressStore.load();
+  await AudioService.instance.load();
   // Fire-and-forget: ad SDK init should never block the first frame.
   // `AdsService.initialize` internally runs the UMP (GDPR) consent flow
   // first — if a form is required it shows immediately; `canRequestAds`
