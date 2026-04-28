@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/tile_theme.dart';
+import '../services/audio_service.dart';
 import '../services/settings_service.dart';
 import '../theme.dart';
 
@@ -63,6 +64,7 @@ class _TileWidgetState extends State<TileWidget>
     if (SettingsService.instance.haptics.value) {
       HapticFeedback.selectionClick();
     }
+    AudioService.instance.playTileFlip();
     widget.onTap();
   }
 

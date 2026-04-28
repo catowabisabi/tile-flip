@@ -9,9 +9,11 @@ import '../models/infinite_difficulty.dart';
 import '../models/puzzle.dart';
 import '../models/tile_theme.dart';
 import '../services/ads.dart';
+import '../services/audio_service.dart';
 import '../services/settings_service.dart';
 import '../services/storage.dart';
 import '../theme.dart';
+import '../widgets/audio_mixer_button.dart';
 import '../widgets/banner_ad_slot.dart';
 import '../widgets/coin_hud.dart';
 import '../widgets/confetti.dart';
@@ -49,6 +51,7 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
         _loadNext();
       });
     });
+    AudioService.instance.playGameplayBgm();
   }
 
   void _loadNext() {
@@ -87,12 +90,16 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
     if (SettingsService.instance.haptics.value) {
       unawaited(HapticFeedback.mediumImpact());
     }
+    unawaited(AudioService.instance.playWin());
     final store = _store ?? await ProgressStore.load();
     // Snapshot before recording so we can distinguish a brand-new best
     // streak from merely tying the existing one.
     final previousBest = store.infiniteBestStreak;
     await store.recordInfiniteWin();
     await store.addCoins(kInfiniteCoinsPerWin);
+    Future<void>.delayed(const Duration(milliseconds: 500), () {
+      AudioService.instance.playCoinEarn();
+    });
     final winCount = await store.incrementWinCount();
     if (winCount % kInterstitialEveryNWins == 0) {
       unawaited(AdsService.instance.maybeShowInterstitial());
@@ -134,6 +141,7 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
   /// re-picks difficulty accordingly so the player doesn't stay stuck on a
   /// board they can't solve.
   Future<void> _skip() async {
+    unawaited(AudioService.instance.playStreakBreak());
     await _store?.resetInfiniteStreak();
     if (!mounted) return;
     setState(_loadNext);
@@ -164,6 +172,7 @@ class _InfiniteScreenState extends State<InfiniteScreen> {
                 padding: EdgeInsets.only(right: 4),
                 child: Center(child: CoinHud()),
               ),
+              const AudioMixerButton(),
               IconButton(
                 tooltip: 'Undo',
                 onPressed: _history.isEmpty || _won ? null : _undo,

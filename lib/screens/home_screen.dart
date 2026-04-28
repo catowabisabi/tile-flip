@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/audio_service.dart';
 import '../theme.dart';
 import '../widgets/banner_ad_slot.dart';
 import '../widgets/coin_hud.dart';
@@ -8,8 +9,44 @@ import 'infinite_screen.dart';
 import 'levels_screen.dart';
 import 'settings_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    AudioService.instance.playMenuBgm();
+  }
+
+  void _openLevels() {
+    AudioService.instance.playButtonTap();
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const LevelsScreen()))
+        .then((_) {
+          if (mounted) AudioService.instance.playMenuBgm();
+        });
+  }
+
+  void _openInfinite() {
+    AudioService.instance.playButtonTap();
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const InfiniteScreen()))
+        .then((_) {
+          if (mounted) AudioService.instance.playMenuBgm();
+        });
+  }
+
+  void _openSettings() {
+    AudioService.instance.playButtonTap();
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,15 +61,7 @@ class HomeScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const CoinHud(),
-                    _SettingsButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const SettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
+                    _SettingsButton(onPressed: _openSettings),
                   ],
                 ),
               ),
@@ -58,25 +87,13 @@ class HomeScreen extends StatelessWidget {
                       _PrimaryCta(
                         label: 'LEVELS',
                         icon: Icons.grid_view_rounded,
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const LevelsScreen(),
-                            ),
-                          );
-                        },
+                        onPressed: _openLevels,
                       ),
                       const SizedBox(height: 14),
                       _GlassCta(
                         label: 'INFINITE',
                         icon: Icons.all_inclusive_rounded,
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const InfiniteScreen(),
-                            ),
-                          );
-                        },
+                        onPressed: _openInfinite,
                       ),
                       const SizedBox(height: 14),
                       const _HowToHint(),
